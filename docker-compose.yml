@@ -1,0 +1,165 @@
+# CDMX Crime GIS — backend + frontend + MCP server.
+#
+# Sibling of ../metro (same networks, same shared postgres, same Traefik).
+# Everything that must be unique on the shared networks is suffixed `crime`:
+# container names, Traefik router names, and Docker secret names.
+#
+# Networks (created once per host by /home/iktdts/apps/infra/networks/setup_networks.sh):
+#   internet  — public Traefik entrypoint. Frontends + Traefik-routed services join.
+#   intranet  — internal service mesh (frontend ↔ backend, backend ↔ mcp_server).
+#   dbnet     — shared postgres container at /home/iktdts/apps/infra/database/.
+#
+# Activate per environment:
+#   docker compose --env-file .env       up -d --build   # local dev
+#   docker compose --env-file .env.test  up -d --build   # test (crime.home.iktdts.com)
+#   docker compose --env-file .env.prod  up -d --build   # prod
+#
+# Prerequisites: ./scripts/db-setup.sh bootstrapped cdmx_crime on the shared
+# postgres, ./scripts/fetch_data.sh (on the Mexico VPN) populated ./data and
+# ./boundaries, and ./secrets/*.txt is populated.
+
+services:
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ${BACKEND_CONTAINER_NAME:-cdmx-crime-backend}
+    restart: unless-stopped
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 200
+    # Crime ingest streams a 560 MB CSV through pandas in 200k-row chunks and
+    # holds one chunk of asyncpg records at a time; 2g leaves headroom.
+    mem_limit: 2g
+    tmpfs:
+      - /tmp:size=256M,mode=1777
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - POSTGRES_USER=${POSTGRES_USER:-crime_user}
+      - POSTGRES_DB=${POSTGRES_DB:-cdmx_crime}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_SCHEMA=${POSTGRES_SCHEMA:-crime_user}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173}
+      - CRIME_GEMINI_MODEL=${CRIME_GEMINI_MODEL:-gemini-2.5-flash}
+      - CRIME_MCP_URL=${CRIME_MCP_URL:?set CRIME_MCP_URL in .env (use ${MCP_CONTAINER_NAME})}
+      - INGEST_ON_BOOT=${INGEST_ON_BOOT:-1}
+      - GTFS_DIR=/app/gtfs
+      - DATA_DIR=/app/data
+      - BOUNDARIES_DIR=/app/boundaries
+    secrets:
+      - db_password
+      - gemini_api_key
+      - crime_mcp_api_key
+    volumes:
+      - ./gtfs:/app/gtfs:ro
+      - ./data:/app/data:ro
+      - ./boundaries:/app/boundaries:ro
+    networks:
+      - intranet
+      - dbnet
+    healthcheck:
+      # /health answers 200 as soon as the pool is up; ingest runs in the
+      # background and is reported in the body, so the container is "healthy"
+      # while the first-boot ingest is still loading.
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  mcp_server:
+    build:
+      context: ./mcp_server
+      dockerfile: Dockerfile
+    container_name: ${MCP_CONTAINER_NAME:-cdmx-crime-mcp}
+    restart: unless-stopped
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 200
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32M,mode=1777
+    environment:
+      # CRIME_BACKEND_URL comes from .env*, which uses the unique container
+      # name `${BACKEND_CONTAINER_NAME}` — never the bare alias `backend`,
+      # which collides on the shared `intranet` network with other projects.
+      - CRIME_BACKEND_URL=${CRIME_BACKEND_URL:?set CRIME_BACKEND_URL in .env}
+      - CRIME_MCP_SERVER_PORT=6701
+      - LOG_LEVEL=${MCP_LOG_LEVEL:-INFO}
+    secrets:
+      - crime_mcp_api_key
+    networks:
+      - internet
+      - intranet
+    depends_on:
+      - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=internet"
+      - "traefik.http.routers.crimemcp.rule=Host(`${CRIME_MCP_HOST:-crimemcp.iktdts.com}`)"
+      - "traefik.http.routers.crimemcp.entrypoints=websecure"
+      - "traefik.http.routers.crimemcp.tls=true"
+      - "traefik.http.routers.crimemcp.tls.certresolver=${CERT_RESOLVER:-cloudflare}"
+      - "traefik.http.services.crimemcp.loadbalancer.server.port=6701"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ${FRONTEND_CONTAINER_NAME:-cdmx-crime-frontend}
+    restart: unless-stopped
+    # Deliberately not read_only / non-root: `vite dev` writes its cache into
+    # the bind-mounted tree (see ../metro/docker-compose.yml for the rationale).
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 200
+    mem_limit: 1g
+    environment:
+      - VITE_ALLOWED_HOST=${CRIME_FRONTEND_HOST:-}
+      # Unique container name, not the bare alias `backend` (shared intranet).
+      - VITE_API_TARGET=http://${BACKEND_CONTAINER_NAME:?set BACKEND_CONTAINER_NAME in .env}:8000
+    expose:
+      - "5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - internet
+      - intranet
+    depends_on:
+      - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=internet"
+      - "traefik.http.routers.crime-frontend.rule=Host(`${CRIME_FRONTEND_HOST:-crime.iktdts.com}`)"
+      - "traefik.http.routers.crime-frontend.entrypoints=websecure"
+      - "traefik.http.routers.crime-frontend.tls=true"
+      - "traefik.http.routers.crime-frontend.tls.certresolver=${CERT_RESOLVER:-cloudflare}"
+      - "traefik.http.services.crime-frontend.loadbalancer.server.port=5173"
+
+networks:
+  internet:
+    external: true
+  intranet:
+    external: true
+  dbnet:
+    external: true
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  gemini_api_key:
+    file: ./secrets/gemini_api_key.txt
+  crime_mcp_api_key:
+    file: ./secrets/crime_mcp_api_key.txt

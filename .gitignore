@@ -1,0 +1,36 @@
+.env
+secrets/*
+!secrets/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# OS
+.DS_Store
+
+# --- deploy convention (tools/fixdeploy.sh) ---
+.env.local
+.env.prod
+.env.test
+secrets/
+secrets.prod/
+secrets.test/
+# --- /deploy convention ---
+
+# --- crime: large open-data inputs (re-fetch with scripts/fetch_data.sh) ---
+data/*
+!data/.gitkeep
+boundaries/*
+!boundaries/.gitkeep
+gtfs/*.zip
+
+# local dev port mapping
+docker-compose.override.yml
