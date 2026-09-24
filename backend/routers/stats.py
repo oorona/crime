@@ -331,7 +331,6 @@ async def stats_hotspots(
     win = await _window(pool, f)
     rows = await hex_counts(pool, f, res)
     rows = sorted(rows, key=lambda r: int(r["n"]), reverse=True)[:top]
-    total = sum(int(r["n"]) for r in rows)
     out = []
     for r in rows:
         ctx = await pool.fetchrow("""
