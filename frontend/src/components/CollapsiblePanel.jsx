@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useT } from '../i18n.js';
 
 // Floating panel with a header bar that toggles a collapsed state.
 // `position` is forwarded to the outer div so the caller controls placement
@@ -16,6 +17,7 @@ export default function CollapsiblePanel({
   collapseSignal,
   children,
 }) {
+  const t = useT();
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   useEffect(() => {
     if (collapseSignal !== undefined && collapseSignal !== null) {
@@ -39,7 +41,7 @@ export default function CollapsiblePanel({
       <button
         type="button"
         onClick={() => setCollapsed(c => !c)}
-        title={collapsed ? 'Expandir' : 'Colapsar'}
+        title={t(collapsed ? 'panel.expand' : 'panel.collapse')}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           width: '100%',

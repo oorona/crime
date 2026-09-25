@@ -1,10 +1,12 @@
 import React from 'react';
+import { useT } from '../../i18n.js';
 
 // Inline-SVG line chart for a monthly series. `series` is [{label, y}]; an
 // optional `secondary` series (same length) is drawn faint on its own scale
 // (used for ridership behind the crime count).
 export default function Sparkline({ series, secondary, width = 300, height = 70, color = '#f97316', color2 = '#3b82f6', formatY = v => v }) {
-  if (!series?.length) return <div style={{ fontSize: 11, opacity: 0.6 }}>Sin datos</div>;
+  const t = useT();
+  if (!series?.length) return <div style={{ fontSize: 11, opacity: 0.6 }}>{t('nodata')}</div>;
   const pad = { l: 4, r: 4, t: 6, b: 14 };
   const w = width - pad.l - pad.r, h = height - pad.t - pad.b;
   const ys = series.map(p => p.y ?? 0);

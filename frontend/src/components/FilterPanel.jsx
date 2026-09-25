@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import CollapsiblePanel from './CollapsiblePanel.jsx';
 import { api } from '../api.js';
-import { categoryColor, shortCategory, LOW_IMPACT, NON_CRIMINAL, MODE_LABELS, DOW_LABELS } from '../data/categories.js';
+import { categoryColor, shortCategory, LOW_IMPACT, NON_CRIMINAL, modeLabel, dowLabels } from '../data/categories.js';
+import { useLang, useT } from '../i18n.js';
 
 // Left-hand filter panel. Emits one `filters` object (see api.filterQuery)
 // through setFilters; MapApp debounces the refetch.
 export default function FilterPanel({ filters, setFilters, coverage, collapseSignal }) {
   const [catalog, setCatalog] = useState(null);
   const [showAllCats, setShowAllCats] = useState(false);
+  const lang = useLang();
+  const t = useT();
 
   useEffect(() => {
     api.categoriesList().then(setCatalog).catch(() => setCatalog({ categories: [], modes: [] }));
@@ -45,8 +48,8 @@ export default function FilterPanel({ filters, setFilters, coverage, collapseSig
   const visibleCats = showAllCats ? cats : cats.slice(0, 8);
 
   return (
-    <CollapsiblePanel title="Filtros" position={{ top: 12, left: 12 }} width={300} collapseSignal={collapseSignal}>
-      <Section title="Periodo (fecha del hecho)">
+    <CollapsiblePanel title={t('f.title')} position={{ top: 12, left: 12 }} width={300} collapseSignal={collapseSignal}>
+      <Section title={t('f.period')}>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <input type="month" min={minMonth} max={maxMonth} value={filters.from?.slice(0, 7) || ''}
             onChange={e => set({ from: e.target.value ? `${e.target.value}-01` : null })} style={{ flex: 1, fontSize: 12, padding: 4 }} />
@@ -55,79 +58,79 @@ export default function FilterPanel({ filters, setFilters, coverage, collapseSig
             onChange={e => set({ to: e.target.value ? endOfMonth(e.target.value) : null })} style={{ flex: 1, fontSize: 12, padding: 4 }} />
         </div>
         <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
-          <Chip on={false} onClick={() => set({ from: `${maxMonth.slice(0, 4)}-01-01`, to: endOfMonth(maxMonth) })}>Último año</Chip>
-          <Chip on={false} onClick={() => set(lastMonths(maxMonth, 12))}>Últimos 12 meses</Chip>
-          <Chip on={false} onClick={() => set({ from: null, to: null })}>Todo ({minMonth.slice(0, 4)}–{maxMonth.slice(0, 4)})</Chip>
+          <Chip on={false} onClick={() => set({ from: `${maxMonth.slice(0, 4)}-01-01`, to: endOfMonth(maxMonth) })}>{t('f.lastYear')}</Chip>
+          <Chip on={false} onClick={() => set(lastMonths(maxMonth, 12))}>{t('f.last12')}</Chip>
+          <Chip on={false} onClick={() => set({ from: null, to: null })}>{t('f.all', { a: minMonth.slice(0, 4), b: maxMonth.slice(0, 4) })}</Chip>
         </div>
       </Section>
 
-      <Section title="Categoría de delito">
+      <Section title={t('f.category')}>
         <div style={{ display: 'flex', gap: 4, marginBottom: 6, flexWrap: 'wrap' }}>
-          <Chip on={filters.categories.length === 0} onClick={() => set({ categories: [] })}>Todas</Chip>
-          <Chip on={isHighImpact} onClick={() => set({ categories: isHighImpact ? [] : highImpactCats })}>Solo alto impacto</Chip>
+          <Chip on={filters.categories.length === 0} onClick={() => set({ categories: [] })}>{t('f.allCats')}</Chip>
+          <Chip on={isHighImpact} onClick={() => set({ categories: isHighImpact ? [] : highImpactCats })}>{t('f.highImpact')}</Chip>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 190, overflowY: 'auto' }}>
           {visibleCats.map(c => (
             <label key={c.categoria} title={c.categoria} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12 }}>
               <input type="checkbox" checked={filters.categories.includes(c.categoria)} onChange={() => toggleCat(c.categoria)} />
               <span style={{ width: 10, height: 10, borderRadius: 2, background: categoryColor(c.categoria), flexShrink: 0 }} />
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{shortCategory(c.categoria)}</span>
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{shortCategory(c.categoria, lang)}</span>
               <span style={{ opacity: 0.5, fontSize: 10 }}>{fmtK(c.n)}</span>
             </label>
           ))}
           {cats.length > 8 && (
             <button onClick={() => setShowAllCats(s => !s)} style={{ fontSize: 11, padding: '2px 6px', alignSelf: 'flex-start' }}>
-              {showAllCats ? 'Menos' : `Ver las ${cats.length}`}
+              {showAllCats ? t('f.less') : t('f.showAll', { n: cats.length })}
             </button>
           )}
         </div>
       </Section>
 
-      <Section title="Transporte público">
+      <Section title={t('f.transport')}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12 }}>
           <input type="checkbox" checked={filters.transportOnly} onChange={() => set({ transportOnly: !filters.transportOnly, modes: filters.transportOnly ? [] : filters.modes })} />
-          Solo delitos contra pasajeros
+          {t('f.transportOnly')}
         </label>
         {filters.transportOnly && (
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
             {(catalog?.modes || []).map(m => (
-              <Chip key={m.mode} on={filters.modes.includes(m.mode)} onClick={() => toggleMode(m.mode)} title={`${m.n.toLocaleString()} carpetas`}>
-                {MODE_LABELS[m.mode] || m.mode}
+              <Chip key={m.mode} on={filters.modes.includes(m.mode)} onClick={() => toggleMode(m.mode)} title={t('f.cases', { n: m.n.toLocaleString() })}>
+                {modeLabel(m.mode, lang)}
               </Chip>
             ))}
           </div>
         )}
       </Section>
 
-      <Section title="Hora y día">
+      <Section title={t('f.timeDay')}>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <input type="checkbox" checked={!!filters.hours} onChange={e => set({ hours: e.target.checked ? '22-5' : null })} /> Horas
+            <input type="checkbox" checked={!!filters.hours} onChange={e => set({ hours: e.target.checked ? '22-5' : null })} /> {t('f.hours')}
           </label>
           {filters.hours && (
             <>
               <input type="number" min={0} max={23} value={h0} onChange={e => set({ hours: `${clampH(e.target.value)}-${h1}` })} style={{ width: 48, padding: 3 }} />
-              <span style={{ opacity: 0.6 }}>a</span>
+              <span style={{ opacity: 0.6 }}>{t('f.to')}</span>
               <input type="number" min={0} max={23} value={h1} onChange={e => set({ hours: `${h0}-${clampH(e.target.value)}` })} style={{ width: 48, padding: 3 }} />
-              <span style={{ opacity: 0.6, fontSize: 10 }}>(incl., cruza medianoche)</span>
+              <span style={{ opacity: 0.6, fontSize: 10 }}>{t('f.hoursNote')}</span>
             </>
           )}
         </div>
         <div style={{ display: 'flex', gap: 3, marginTop: 6 }}>
-          {DOW_LABELS.map((d, i) => (
+          {dowLabels(lang).map((d, i) => (
             <Chip key={d} on={filters.dows.includes(i + 1)} onClick={() => toggleDow(i + 1)}>{d}</Chip>
           ))}
         </div>
       </Section>
 
-      <Section title="Estaciones del Metro">
+      <Section title={t('f.stations')}>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, flexWrap: 'wrap' }}>
-          <span style={{ opacity: 0.75 }}>Medida:</span>
-          <Chip on={filters.normalize === 'count'} onClick={() => set({ normalize: 'count' })}>Conteo</Chip>
-          <Chip on={filters.normalize === 'rate'} onClick={() => set({ normalize: 'rate' })} title="Carpetas por millón de entradas al Metro en los mismos meses">Por millón de usuarios</Chip>
+          <span style={{ opacity: 0.75 }}>{t('f.measure')}</span>
+          <Chip on={filters.normalize === 'count'} onClick={() => set({ normalize: 'count' })}>{t('f.count')}</Chip>
+          <Chip on={filters.normalize === 'rate'} onClick={() => set({ normalize: 'rate' })} title={t('f.rateTip')}>{t('f.rate')}</Chip>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, marginTop: 6 }}>
-          <span style={{ opacity: 0.75 }}>Radio:</span>
+          <span style={{ opacity: 0.75 }}>{t('f.radius')}</span>
           <Chip on={filters.radius === 300} onClick={() => set({ radius: 300 })}>300 m</Chip>
           <Chip on={filters.radius === 500} onClick={() => set({ radius: 500 })}>500 m</Chip>
         </div>

@@ -3,12 +3,15 @@ import { Link } from 'react-router-dom';
 import { useChatStream, clearTraceCache } from '../hooks/useChatStream.js';
 import TracePanel from './TracePanel.jsx';
 import VerticalSplitter from './Splitter.jsx';
+import { useLang, useT, basePath } from '../i18n.js';
 
 const TRACE_WIDTH_KEY = 'crime_chat_trace_width';
 const DEFAULT_TRACE_WIDTH = 420;
 
 export default function ChatInterface() {
   const { state, send, reset, load } = useChatStream();
+  const lang = useLang();
+  const t = useT();
   const [input, setInput] = useState('');
   const [conversations, setConversations] = useState([]);
   const [historyTick, setHistoryTick] = useState(0);
@@ -53,7 +56,7 @@ export default function ChatInterface() {
     const v = input.trim();
     if (!v || state.status === 'streaming') return;
     setInput('');
-    send(v);
+    send(v, { lang });
   };
 
   const onPickConversation = (id) => {
@@ -109,7 +112,7 @@ export default function ChatInterface() {
             background: '#1f6feb', color: '#fff',
             border: 'none', borderRadius: 4, cursor: 'pointer',
           }}>
-          + Nueva conversación
+          {t('c.new')}
         </button>
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {conversations.map((c) => (
@@ -127,16 +130,16 @@ export default function ChatInterface() {
                 <div style={{
                   fontSize: 13, fontWeight: 500,
                   whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden',
-                }}>{c.title || '(sin título)'}</div>
+                }}>{c.title || t('c.untitled')}</div>
                 <div style={{ fontSize: 11, opacity: 0.6 }}>
-                  {c.msg_count} mensajes
+                  {t('c.messages', { n: c.msg_count })}
                 </div>
               </div>
               {pendingDelete === c.id ? (
                 <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                   <button
                     onClick={(e) => onDeleteConfirm(c.id, e)}
-                    title="Confirmar borrado"
+                    title={t('c.confirmDelete')}
                     style={{
                       background: '#7f1d1d', border: 'none', color: '#fff',
                       fontSize: 12, cursor: 'pointer', padding: '2px 8px',
@@ -144,7 +147,7 @@ export default function ChatInterface() {
                     }}>✓</button>
                   <button
                     onClick={onDeleteCancel}
-                    title="Cancelar"
+                    title={t('c.cancel')}
                     style={{
                       background: '#21262d', border: '1px solid #30363d',
                       color: '#cbd5e1', fontSize: 12, cursor: 'pointer',
@@ -154,7 +157,7 @@ export default function ChatInterface() {
               ) : (
                 <button
                   onClick={(e) => onDeleteRequest(c.id, e)}
-                  title="Eliminar"
+                  title={t('c.delete')}
                   style={{
                     background: 'transparent', border: 'none', color: '#94a3b8',
                     fontSize: 14, cursor: 'pointer', padding: 4, flexShrink: 0,
@@ -164,7 +167,7 @@ export default function ChatInterface() {
           ))}
           {conversations.length === 0 && (
             <div style={{ padding: 12, fontSize: 12, opacity: 0.6 }}>
-              Sin conversaciones aún.
+              {t('c.empty')}
             </div>
           )}
         </div>
@@ -174,7 +177,7 @@ export default function ChatInterface() {
         {state.turns.length > 0 && !traceOpen && (
           <button
             onClick={() => { setTraceTurnIdx(null); setTraceOpen(true); }}
-            title="Ver razonamiento detallado"
+            title={t('c.showTraceTip')}
             style={{
               position: 'absolute', top: 12, right: 12, zIndex: 5,
               padding: '6px 10px', fontSize: 12,
@@ -182,7 +185,7 @@ export default function ChatInterface() {
               border: '1px solid #30363d', borderRadius: 4,
               cursor: 'pointer',
             }}>
-            🧠 Ver razonamiento
+            {t('c.showTrace')}
           </button>
         )}
         <div style={{
@@ -216,7 +219,7 @@ export default function ChatInterface() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Pregunta sobre delitos en la CDMX… ej. '¿qué estación tiene más robos por usuario en 2024?'"
+            placeholder={t('c.placeholder')}
             disabled={state.status === 'streaming'}
             style={{
               flex: 1, padding: '8px 10px', fontSize: 13,
@@ -233,7 +236,7 @@ export default function ChatInterface() {
               color: '#fff', border: 'none', borderRadius: 4,
               cursor: state.status === 'streaming' ? 'wait' : 'pointer',
             }}>
-            {state.status === 'streaming' ? 'Pensando…' : 'Enviar'}
+            {state.status === 'streaming' ? t('w.thinking') : t('c.send')}
           </button>
         </form>
       </main>
@@ -256,26 +259,18 @@ export default function ChatInterface() {
 }
 
 function Welcome() {
+  const t = useT();
   return (
     <div style={{
       maxWidth: 560, margin: '40px auto', padding: 16,
       fontSize: 13, lineHeight: 1.6, opacity: 0.85,
     }}>
-      <h2 style={{ marginTop: 0 }}>Analista de delitos y transporte CDMX</h2>
-      <p>
-        Pregunta sobre patrones en las carpetas de investigación de la FGJ (2019 en adelante)
-        alrededor del Metro, por colonia o alcaldía, por hora, categoría o periodo. Por ejemplo:
-      </p>
+      <h2 style={{ marginTop: 0 }}>{t('c.welcomeTitle')}</h2>
+      <p>{t('c.welcomeIntro')}</p>
       <ul>
-        <li>¿Qué estación del Metro tiene más robos por millón de usuarios?</li>
-        <li>Compara el robo a transeúnte en Cuauhtémoc en 2019 vs 2023.</li>
-        <li>¿A qué hora y qué día hay más robos cerca de Hidalgo?</li>
-        <li>¿Dónde están los puntos calientes de robo de vehículo en Iztapalapa?</li>
-        <li>¿Cómo ha cambiado la tendencia de extorsión mes a mes?</li>
+        {[1, 2, 3, 4, 5].map(i => <li key={i}>{t(`c.ex${i}`)}</li>)}
       </ul>
-      <p style={{ fontSize: 12, opacity: 0.7 }}>
-        Los datos son denuncias, no incidencia real; el asistente indica la ventana de fechas y las salvedades en cada respuesta.
-      </p>
+      <p style={{ fontSize: 12, opacity: 0.7 }}>{t('c.welcomeNote')}</p>
     </div>
   );
 }
@@ -306,14 +301,15 @@ function Turn({ turn, streaming, onShowTrace }) {
 }
 
 function WorkingIndicator({ toolCalls, iterCount, onShowTrace }) {
+  const t = useT();
   const last = toolCalls && toolCalls.length > 0 ? toolCalls[toolCalls.length - 1] : null;
   const label = last
-    ? `Llamando ${last.tool}…`
-    : 'Pensando…';
+    ? t('w.calling', { tool: last.tool })
+    : t('w.thinking');
   return (
     <div
       onClick={onShowTrace}
-      title="Ver razonamiento detallado"
+      title={t('c.showTraceTip')}
       style={{
         alignSelf: 'flex-start',
         display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -346,6 +342,7 @@ function Spinner() {
 }
 
 function ThinkingBlock({ text, streaming }) {
+  const t = useT();
   const [open, setOpen] = useState(true);
   return (
     <details
@@ -358,7 +355,7 @@ function ThinkingBlock({ text, streaming }) {
         fontSize: 12, color: '#9ca3af',
       }}>
       <summary style={{ cursor: 'pointer', fontWeight: 600, opacity: 0.85 }}>
-        🧠 Razonamiento del modelo {streaming && <span style={{ opacity: 0.6 }}>· pensando…</span>}
+        {t('c.modelThinking')} {streaming && <span style={{ opacity: 0.6 }}>{t('c.thinkingSuffix')}</span>}
       </summary>
       <div style={{
         marginTop: 6, fontStyle: 'italic', whiteSpace: 'pre-wrap',
@@ -383,7 +380,8 @@ function UserBubble({ text }) {
 }
 
 function AssistantBubble({ text, streaming, toolCalls, onShowTrace, iterCount }) {
-  const showOnMapHref = buildMapHref(toolCalls);
+  const t = useT();
+  const showOnMapHref = buildMapHref(toolCalls, basePath(useLang()));
   if (!text && !streaming) return null;
   return (
     <div style={{
@@ -401,7 +399,7 @@ function AssistantBubble({ text, streaming, toolCalls, onShowTrace, iterCount })
             display: 'inline-block', padding: '4px 10px',
             fontSize: 12, color: '#fff', background: '#1f6feb',
             borderRadius: 4, textDecoration: 'none',
-          }}>Ver en el mapa</Link>
+          }}>{t('c.onMap')}</Link>
         )}
         {onShowTrace && iterCount > 0 && (
           <button onClick={onShowTrace} style={{
@@ -409,7 +407,7 @@ function AssistantBubble({ text, streaming, toolCalls, onShowTrace, iterCount })
             background: 'transparent', color: '#cbd5e1',
             border: '1px solid #30363d', borderRadius: 4, cursor: 'pointer',
           }}>
-            🧠 Ver razonamiento ({iterCount} {iterCount === 1 ? 'iter' : 'iters'})
+            {t('c.showTraceN', { n: iterCount, u: iterCount === 1 ? 'iter' : 'iters' })}
           </button>
         )}
       </div>
@@ -451,7 +449,7 @@ function ToolCallChip({ call }) {
 }
 
 // Deep link into the map for the last spatial tool call of a turn.
-function buildMapHref(toolCalls) {
+function buildMapHref(toolCalls, base = '') {
   const done = (toolCalls || []).filter(tc => tc.status === 'done' && tc.result && !tc.result.error);
   const params = new URLSearchParams();
   const last = (name) => [...done].reverse().find(tc => tc.tool === name);
@@ -468,7 +466,7 @@ function buildMapHref(toolCalls) {
     if (a.kind === 'colonia') { params.set('colonia_id', a.id); params.set('name', a.name); }
     else params.set('alcaldia', a.name);
   } else return null;
-  return `/?${params.toString()}`;
+  return `${base}/?${params.toString()}`;
 }
 
 function formatSummary(call) {

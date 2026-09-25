@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useT } from '../i18n.js';
 
 // TracePanel — slides in from the right of the chat main pane and shows the
 // full ReAct trace for one turn: every iteration's thinking text, every tool
@@ -6,10 +7,11 @@ import React, { useMemo, useState } from 'react';
 // a reader to be able to reconstruct exactly how the agent solved the
 // problem without having to read the raw SSE stream.
 export default function TracePanel({ turn, onClose, streaming, width = 420 }) {
+  const t = useT();
   if (!turn) {
     return (
       <Shell onClose={onClose} width={width}>
-        <div style={emptyStyle}>Aún no hay razonamiento que mostrar.</div>
+        <div style={emptyStyle}>{t('tr.empty')}</div>
       </Shell>
     );
   }
@@ -33,7 +35,7 @@ export default function TracePanel({ turn, onClose, streaming, width = 420 }) {
       ))}
       {streaming && (
         <div style={{ padding: 12, fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>
-          esperando próxima iteración…
+          {t('tr.waitingNext')}
         </div>
       )}
     </Shell>
@@ -41,6 +43,7 @@ export default function TracePanel({ turn, onClose, streaming, width = 420 }) {
 }
 
 function Shell({ children, onClose, width }) {
+  const t = useT();
   return (
     <aside style={{
       width, flexShrink: 0,
@@ -55,10 +58,10 @@ function Shell({ children, onClose, width }) {
         borderBottom: '1px solid #30363d',
         background: '#0d1117',
       }}>
-        <span style={{ fontSize: 13, fontWeight: 600 }}>🧠 Razonamiento detallado</span>
+        <span style={{ fontSize: 13, fontWeight: 600 }}>{t('tr.title')}</span>
         <button
           onClick={onClose}
-          title="Cerrar"
+          title={t('tr.close')}
           style={{
             background: 'transparent', border: 'none', color: '#94a3b8',
             fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: 4,
@@ -72,6 +75,7 @@ function Shell({ children, onClose, width }) {
 }
 
 function UserBlock({ text }) {
+  const t = useT();
   if (!text) return null;
   return (
     <div style={{
@@ -80,7 +84,7 @@ function UserBlock({ text }) {
       borderRadius: 4, fontSize: 12, whiteSpace: 'pre-wrap',
     }}>
       <div style={{ fontWeight: 600, fontSize: 11, opacity: 0.7, marginBottom: 4 }}>
-        ▶ Pregunta del usuario
+        {t('tr.userQ')}
       </div>
       {text}
     </div>
@@ -88,14 +92,16 @@ function UserBlock({ text }) {
 }
 
 function FallbackBlock({ text }) {
+  const t = useT();
   return (
-    <Section title="Razonamiento (sin desglose por iteración)">
+    <Section title={t('tr.fallback')}>
       <div style={thinkStyle}>{text}</div>
     </Section>
   );
 }
 
 function IterationBlock({ iter, finalText, streaming }) {
+  const t = useT();
   const [open, setOpen] = useState(true);
   const callsCount = (iter.toolCalls || []).length;
   const hasFinal = finalText && finalText.length > 0;
@@ -120,41 +126,41 @@ function IterationBlock({ iter, finalText, streaming }) {
       }}>
         <span>
           <span style={{ display: 'inline-block', minWidth: 18, textAlign: 'center' }}>{iter.iter}</span>
-          <span style={{ marginLeft: 6 }}>Iteración {iter.iter}</span>
+          <span style={{ marginLeft: 6 }}>{t('tr.iteration', { n: iter.iter })}</span>
         </span>
         <span style={{ fontSize: 10, opacity: 0.6, fontWeight: 400 }}>
-          {callsCount > 0 && `${callsCount} herramienta${callsCount > 1 ? 's' : ''}`}
+          {callsCount > 0 && t(callsCount > 1 ? 'tr.toolsN' : 'tr.tools1', { n: callsCount })}
           {callsCount > 0 && hasFinal && ' · '}
-          {hasFinal && 'respuesta final'}
+          {hasFinal && t('tr.final')}
         </span>
       </summary>
       <div style={{ padding: '0 12px 10px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {/* Phase 1: REASON — model's chain-of-thought before deciding on action */}
         <PhaseSection
           icon="🤔"
-          phase="Razonar"
+          phase={t('tr.reason')}
           subtitle="Reason"
           color="#a78bfa">
           {iter.thinking ? (
             <div style={thinkStyle}>{iter.thinking}{streaming && !iter.toolCalls.length && !finalText && <Caret />}</div>
           ) : streaming && !iter.toolCalls.length ? (
-            <div style={{ ...thinkStyle, opacity: 0.6 }}>esperando…<Caret /></div>
+            <div style={{ ...thinkStyle, opacity: 0.6 }}>{t('tr.waiting')}<Caret /></div>
           ) : (
-            <div style={emptyPhaseStyle}>(el modelo no expuso razonamiento en este paso)</div>
+            <div style={emptyPhaseStyle}>{t('tr.noThinking')}</div>
           )}
         </PhaseSection>
 
         {/* Phase 2: ACT — tool calls the model decided to make. Shows args only. */}
         <PhaseSection
           icon="🛠"
-          phase="Actuar"
+          phase={t('tr.act')}
           subtitle="Act"
           color="#fbbf24">
           {(iter.toolCalls || []).length === 0 ? (
             <div style={emptyPhaseStyle}>
               {hasFinal
-                ? '(no hay acciones — el modelo respondió directamente)'
-                : '(sin llamadas a herramientas en este paso)'}
+                ? t('tr.noActionsFinal')
+                : t('tr.noActions')}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -168,11 +174,11 @@ function IterationBlock({ iter, finalText, streaming }) {
         {/* Phase 3: OBSERVE — results returned by the tools, paired by call_id */}
         <PhaseSection
           icon="👁"
-          phase="Observar"
+          phase={t('tr.observe')}
           subtitle="Observe"
           color="#34d399">
           {(iter.toolCalls || []).length === 0 ? (
-            <div style={emptyPhaseStyle}>(sin observaciones)</div>
+            <div style={emptyPhaseStyle}>{t('tr.noObs')}</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {iter.toolCalls.map((tc, i) => (
@@ -186,7 +192,7 @@ function IterationBlock({ iter, finalText, streaming }) {
         {hasFinal && (
           <PhaseSection
             icon="💬"
-            phase="Responder"
+            phase={t('tr.answer')}
             subtitle="Answer"
             color="#60a5fa">
             <div style={{ ...thinkStyle, fontStyle: 'normal', color: '#e6edf3' }}>
@@ -216,7 +222,9 @@ function PhaseSection({ icon, phase, subtitle, color, children }) {
       }}>
         <span style={{ fontSize: 13 }}>{icon}</span>
         <span style={{ textTransform: 'uppercase' }}>{phase}</span>
-        <span style={{ fontSize: 10, color: '#6b7280', fontWeight: 500 }}>· {subtitle}</span>
+        {subtitle.toLowerCase() !== phase.toLowerCase() && (
+          <span style={{ fontSize: 10, color: '#6b7280', fontWeight: 500 }}>· {subtitle}</span>
+        )}
       </div>
       {children}
     </div>
@@ -252,6 +260,7 @@ function ActionLine({ call }) {
 }
 
 function ObservationLine({ call }) {
+  const t = useT();
   const isDone = call.status === 'done';
   return (
     <div style={{
@@ -264,7 +273,7 @@ function ObservationLine({ call }) {
         display: 'flex', alignItems: 'center', gap: 6,
         borderBottom: '1px solid #21262d',
       }}>
-        <span style={{ color: '#6b7280', fontSize: 10 }}>resultado de</span>
+        <span style={{ color: '#6b7280', fontSize: 10 }}>{t('tr.resultOf')}</span>
         <span style={{ fontWeight: 600, color: '#e6edf3' }}>{call.tool}</span>
       </div>
       {isDone ? (
@@ -273,13 +282,14 @@ function ObservationLine({ call }) {
         <div style={{
           padding: '6px 10px', fontSize: 11,
           color: '#facc15', fontStyle: 'italic',
-        }}>esperando respuesta de la herramienta…</div>
+        }}>{t('tr.waitingTool')}</div>
       )}
     </div>
   );
 }
 
 function KeyValue({ label, value, maxRows = 8 }) {
+  const t = useT();
   const json = useMemo(() => safeStringify(value), [value]);
   const [open, setOpen] = useState(false);
   const lines = json.split('\n');
@@ -299,7 +309,7 @@ function KeyValue({ label, value, maxRows = 8 }) {
             background: 'transparent', border: 'none', color: '#60a5fa',
             cursor: 'pointer', fontSize: 11, padding: 0, marginTop: 4,
           }}>
-          {open ? 'mostrar menos' : `mostrar ${lines.length - maxRows} líneas más`}
+          {open ? t('tr.less') : t('tr.more', { n: lines.length - maxRows })}
         </button>
       )}
     </div>

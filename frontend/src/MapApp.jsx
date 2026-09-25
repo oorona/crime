@@ -8,6 +8,7 @@ import AreaPanel from './components/AreaPanel.jsx';
 import Legend from './components/Legend.jsx';
 import MiniChat from './components/MiniChat.jsx';
 import { api } from './api.js';
+import { useLang } from './i18n.js';
 
 const DEFAULT_AGENCIES = ['METRO', 'MB'];
 const DEFAULT_LAYERS = { heat: true, stations: true, colonias: false, alcaldias: false, points: false };
@@ -18,6 +19,7 @@ export const DEFAULT_FILTERS = {
 
 export default function MapApp({ health }) {
   const viewsReady = !!health?.views_populated;
+  const lang = useLang();
   const [agencies, setAgencies] = useState([]);
   const [activeBasemap, setActiveBasemap] = useState('osm');
   const [visibleAgencies, setVisibleAgencies] = useState(new Set(DEFAULT_AGENCIES));
@@ -97,6 +99,7 @@ export default function MapApp({ health }) {
         crimeLayers={crimeLayers}
         filters={debounced}
         viewsReady={viewsReady}
+        lang={lang}
         onStationClick={onStationClick}
         onAreaClick={onAreaClick}
         onStationsLoaded={setLegendInfo}

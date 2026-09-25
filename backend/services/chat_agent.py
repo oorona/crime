@@ -28,6 +28,16 @@ logger = logging.getLogger("metro.chat_agent")
 
 PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "chat_system_prompt.txt"
 MAX_ITERATIONS = 8
+
+# Appended to the system prompt for requests from the English entry point.
+# The data and tool results are Spanish, which otherwise pulls replies there.
+ENGLISH_DIRECTIVE = (
+    "\n\n# Reply language: ENGLISH\n\n"
+    "This user is on the English version of the app. Write every reply entirely in English, "
+    "whatever language the data, tool results, category names or earlier turns are in. Keep "
+    "proper names (stations, colonias, alcaldías) as they are; translate category and delito "
+    "names, giving the official Spanish string in parentheses on first mention."
+)
 TOOL_TIMEOUT_SECONDS = 30
 
 
@@ -86,6 +96,7 @@ class ChatAgent:
         history: list[genai_types.Content],
         on_assistant_iteration: Any = None,
         on_tool_message: Any = None,
+        lang: str | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Drive the ReAct loop for one user turn. Yields event dicts ready to
         be JSON-serialized into SSE frames. ``history`` is the prior
@@ -114,6 +125,7 @@ class ChatAgent:
             )
         ]
 
+        system_prompt = self._system_prompt + (ENGLISH_DIRECTIVE if lang == "en" else "")
         assistant_text_parts: list[str] = []
         assistant_message_id = str(uuid.uuid4())
         iter_count = 0
@@ -132,7 +144,7 @@ class ChatAgent:
                     model=self._model,
                     contents=contents,
                     config=genai_types.GenerateContentConfig(
-                        system_instruction=self._system_prompt,
+                        system_instruction=system_prompt,
                         tools=[tool_config],
                         thinking_config=genai_types.ThinkingConfig(
                             include_thoughts=True,

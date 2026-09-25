@@ -1,9 +1,13 @@
 import React from 'react';
-import { DOW_LABELS } from '../../data/categories.js';
+import { dowLabels } from '../../data/categories.js';
+import { useLang, useT } from '../../i18n.js';
 
 // 7 × 24 heat grid: rows = weekday (Mon first), cols = hour of day.
 export default function HourDowGrid({ grid, cell = 11, gap = 1 }) {
-  if (!grid?.length) return <div style={{ fontSize: 11, opacity: 0.6 }}>Sin datos</div>;
+  const lang = useLang();
+  const t = useT();
+  const DOW_LABELS = dowLabels(lang);
+  if (!grid?.length) return <div style={{ fontSize: 11, opacity: 0.6 }}>{t('nodata')}</div>;
   const max = Math.max(1, ...grid.flat());
   const labelW = 26;
   const width = labelW + 24 * (cell + gap), height = 12 + 7 * (cell + gap);

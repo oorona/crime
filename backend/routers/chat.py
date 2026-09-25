@@ -5,7 +5,7 @@ import json
 import logging
 import time
 import uuid
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -32,6 +32,8 @@ class ChatStreamRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=4000)
     conversation_id: Optional[str] = None
     map_context: Optional[MapContext] = None
+    # Set by the English entry point (/en); pins the reply language.
+    lang: Optional[Literal["es", "en"]] = None
 
 
 def _summarize(text: str, limit: int = 60) -> str:
@@ -119,7 +121,8 @@ async def chat_stream(req: ChatStreamRequest, request: Request):
                 f"map_filters: {json.dumps(ctx, ensure_ascii=False)}\n"
                 "(The user is looking at the map filtered like this. Use these values as defaults "
                 "for date_from/date_to/categories/transport_only/alcaldia when the question does not "
-                "state its own, and say which window you used.)\n"
+                "state its own, and say which window you used. Reply in the language of the message "
+                "below, not of these values.)\n"
                 "[/user_context]\n\n"
                 f"{req.message}"
             )
@@ -147,6 +150,7 @@ async def chat_stream(req: ChatStreamRequest, request: Request):
                 user_message=augmented_message,
                 user_message_id=user_message_id,
                 history=history_contents,
+                lang=req.lang,
                 on_assistant_iteration=on_assistant_iteration,
                 on_tool_message=on_tool_message,
             ):

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useChatStream } from '../hooks/useChatStream.js';
+import { useLang, useT } from '../i18n.js';
 
 // Minimal chat affordance pinned to the top-right of the map (under the layer
 // panel). Independent useChatStream instance. When a turn finishes, the tool
@@ -7,6 +8,8 @@ import { useChatStream } from '../hooks/useChatStream.js';
 // areas outlined, hotspots drawn.
 export default function MiniChat({ mapApi, isMapReady, mapContext, onApplyFilters, onStationClick, onAreaClick, chatEnabled }) {
   const { state, send, reset } = useChatStream();
+  const lang = useLang();
+  const t = useT();
   const [input, setInput] = useState('');
   const [collapsed, setCollapsed] = useState(false);
   const firedForTurnRef = useRef(new Set());
@@ -50,7 +53,7 @@ export default function MiniChat({ mapApi, isMapReady, mapContext, onApplyFilter
     const v = input.trim();
     if (!v || state.status === 'streaming') return;
     setInput('');
-    send(v, { mapContext });
+    send(v, { mapContext, lang });
   };
   const onNew = useCallback(() => { firedForTurnRef.current = new Set(); reset(null); mapApi.current?.clearHighlight(); }, [reset, mapApi]);
 
@@ -71,11 +74,11 @@ export default function MiniChat({ mapApi, isMapReady, mapContext, onApplyFilter
         borderBottom: collapsed ? 'none' : '1px solid #30363d', cursor: 'pointer',
         fontSize: 13, fontWeight: 600, textAlign: 'left',
       }}>
-        <span>🔎 Pregúntale a los datos</span>
+        <span>{t('mc.title')}</span>
         <span style={{ opacity: 0.7, fontSize: 11 }}>{collapsed ? '▸' : '▾'}</span>
       </button>
       {!collapsed && chatEnabled === false && (
-        <div style={{ padding: '6px 12px', fontSize: 11, color: '#fbbf24' }}>Chat deshabilitado: falta la clave de Gemini o del MCP en secrets/.</div>
+        <div style={{ padding: '6px 12px', fontSize: 11, color: '#fbbf24' }}>{t('mc.disabled')}</div>
       )}
       {!collapsed && showMessages && (
         <div style={{ padding: 12, overflowY: 'auto', maxHeight: 300, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0, borderBottom: '1px solid #30363d' }}>
@@ -85,7 +88,7 @@ export default function MiniChat({ mapApi, isMapReady, mapContext, onApplyFilter
           {showPensando && (
             <div style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 10px',
               background: '#0d1117', border: '1px dashed #30363d', borderRadius: 16, fontSize: 12, color: '#94a3b8' }}>
-              <Spinner /><span>{workingLabel(lastTurn, state.status)}</span>
+              <Spinner /><span>{workingLabel(lastTurn, state.status, t)}</span>
             </div>
           )}
           {state.status === 'error' && (
@@ -96,22 +99,22 @@ export default function MiniChat({ mapApi, isMapReady, mapContext, onApplyFilter
       )}
       {!collapsed && chatFilters && state.status === 'done' && (
         <div style={{ display: 'flex', gap: 6, padding: '6px 10px', borderBottom: '1px solid #30363d', background: '#0d1117', alignItems: 'center' }}>
-          <span style={{ fontSize: 11, opacity: 0.7, flex: 1 }}>El asistente usó otros filtros</span>
+          <span style={{ fontSize: 11, opacity: 0.7, flex: 1 }}>{t('mc.otherFilters')}</span>
           <button type="button" onClick={() => onApplyFilters?.(chatFilters)} style={{ padding: '3px 10px', fontSize: 11, background: '#1f6feb', color: '#fff', border: 'none', borderRadius: 4 }}>
-            Aplicar al mapa
+            {t('mc.apply')}
           </button>
         </div>
       )}
       {!collapsed && (
         <form onSubmit={onSubmit} style={{ display: 'flex', gap: 6, padding: 10, background: '#0d1117' }}>
           <input type="text" value={input} onChange={(e) => setInput(e.target.value)}
-            placeholder="¿Qué estación tiene más robos por usuario?"
+            placeholder={t('mc.placeholder')}
             disabled={state.status === 'streaming' || chatEnabled === false}
             style={{ flex: 1, padding: '6px 8px', fontSize: 12, background: '#161b22', color: '#e6edf3', border: '1px solid #30363d', borderRadius: 4, outline: 'none' }} />
           {state.turns.length > 0 && (
-            <button type="button" onClick={onNew} title="Nueva pregunta" style={{ padding: '6px 8px', fontSize: 12, background: 'transparent', color: '#94a3b8', border: '1px solid #30363d', borderRadius: 4 }}>↻</button>
+            <button type="button" onClick={onNew} title={t('mc.new')} style={{ padding: '6px 8px', fontSize: 12, background: 'transparent', color: '#94a3b8', border: '1px solid #30363d', borderRadius: 4 }}>↻</button>
           )}
-          <button type="submit" disabled={!input.trim() || state.status === 'streaming'} aria-label="Enviar" style={{ display: 'none' }} />
+          <button type="submit" disabled={!input.trim() || state.status === 'streaming'} aria-label={t('mc.send')} style={{ display: 'none' }} />
         </form>
       )}
     </div>
@@ -149,22 +152,16 @@ function Exchange({ turn, streaming }) {
   );
 }
 
-const TOOL_LABEL = {
-  data_coverage: 'Consultando cobertura…', list_categories: 'Listando categorías…',
-  search_station: 'Buscando estación…', station_crime_stats: 'Calculando estadísticas de la estación…',
-  rank_stations: 'Ordenando estaciones…', crime_trend: 'Calculando tendencia…',
-  category_breakdown: 'Desglosando categorías…', time_profile: 'Perfil por hora/día…',
-  area_summary: 'Resumiendo la zona…', hotspots: 'Buscando puntos calientes…',
-  compare_periods: 'Comparando periodos…', victim_profile: 'Perfil de víctimas…', crime_summary: 'Resumiendo…',
-};
-function workingLabel(turn, status) {
-  if (status !== 'streaming') return 'Pensando…';
+function workingLabel(turn, status, t) {
+  if (status !== 'streaming') return t('w.thinking');
   const calls = turn?.toolCalls || [];
   let recent = null;
   for (let i = calls.length - 1; i >= 0; i--) if (calls[i].status === 'pending') { recent = calls[i]; break; }
   if (!recent && calls.length > 0) recent = calls[calls.length - 1];
-  if (!recent) return 'Pensando…';
-  return TOOL_LABEL[recent.tool] || `Llamando ${recent.tool}…`;
+  if (!recent) return t('w.thinking');
+  const key = `tool.${recent.tool}`;
+  const label = t(key);
+  return label === key ? t('w.calling', { tool: recent.tool }) : label;
 }
 function Spinner() {
   return <span style={{ display: 'inline-block', width: 10, height: 10, border: '2px solid #475569', borderTopColor: '#3b82f6', borderRadius: 5, animation: 'metro-spin 700ms linear infinite' }} />;

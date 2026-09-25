@@ -27,9 +27,32 @@ export function categoryColor(cat) {
   return CATEGORY_COLORS[cat] || '#9ca3af';
 }
 
+// English names for the official categories, keyed without accents because
+// the source files are inconsistent about them.
+const stripAccents = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const CATEGORY_EN = {
+  'ROBO A TRANSEUNTE EN VIA PUBLICA CON Y SIN VIOLENCIA': 'Street robbery',
+  'ROBO DE VEHICULO CON Y SIN VIOLENCIA': 'Vehicle theft',
+  'ROBO A PASAJERO A BORDO DEL METRO CON Y SIN VIOLENCIA': 'Passenger robbery on the Metro',
+  'ROBO A PASAJERO A BORDO DE MICROBUS CON Y SIN VIOLENCIA': 'Passenger robbery on microbuses',
+  'ROBO A PASAJERO A BORDO DE TAXI CON VIOLENCIA': 'Passenger robbery in taxis (violent)',
+  'ROBO A NEGOCIO CON VIOLENCIA': 'Business robbery (violent)',
+  'ROBO A CASA HABITACION CON VIOLENCIA': 'Home robbery (violent)',
+  'ROBO A REPARTIDOR CON Y SIN VIOLENCIA': 'Delivery worker robbery',
+  'ROBO A CUENTAHABIENTE SALIENDO DEL CAJERO CON VIOLENCIA': 'Robbery after ATM withdrawal (violent)',
+  'ROBO A TRANSPORTISTA CON Y SIN VIOLENCIA': 'Cargo carrier robbery',
+  'HOMICIDIO DOLOSO': 'Intentional homicide',
+  'LESIONES DOLOSAS POR DISPARO DE ARMA DE FUEGO': 'Gunshot injuries',
+  'VIOLACION': 'Rape',
+  'SECUESTRO': 'Kidnapping',
+  'DELITO DE BAJO IMPACTO': 'Low-impact crime',
+  'HECHO NO DELICTIVO': 'Non-criminal event',
+};
+
 // Shorter labels for chips and legends.
-export function shortCategory(cat) {
+export function shortCategory(cat, lang = 'es') {
   if (!cat) return '';
+  if (lang === 'en') return CATEGORY_EN[stripAccents(cat)] || cat;
   return cat
     .replace(' CON Y SIN VIOLENCIA', '')
     .replace(' CON VIOLENCIA', ' (c/viol.)')
@@ -49,7 +72,15 @@ export const MODE_LABELS = {
   RTP: 'RTP', MICRO: 'Microbús / pesero', TAXI: 'Taxi', TP: 'Transporte público',
 };
 
+const MODE_LABELS_EN = {
+  ...MODE_LABELS, MB: 'Metrobús', TROLE: 'Trolleybus', TL: 'Light rail', SUB: 'Suburban rail',
+  MICRO: 'Microbus / pesero', TP: 'Public transport',
+};
+export const modeLabel = (m, lang = 'es') => (lang === 'en' ? MODE_LABELS_EN : MODE_LABELS)[m] || m;
+
 export const DOW_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+const DOW_LABELS_EN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+export const dowLabels = (lang = 'es') => (lang === 'en' ? DOW_LABELS_EN : DOW_LABELS);
 
 // Viridis-like ramp used for station circles and the colonia choropleth.
 export const SEQ_RAMP = ['#440154', '#3b528b', '#21918c', '#5ec962', '#fde725'];

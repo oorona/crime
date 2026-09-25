@@ -1,8 +1,10 @@
 import React from 'react';
+import { useT } from '../../i18n.js';
 
 // Horizontal bars. `items` is [{label, value, color?}]; widths relative to max.
 export default function Bars({ items, max, color = '#3b82f6', formatValue = v => v.toLocaleString(), maxLabel = 34 }) {
-  if (!items?.length) return <div style={{ fontSize: 11, opacity: 0.6 }}>Sin datos</div>;
+  const t = useT();
+  if (!items?.length) return <div style={{ fontSize: 11, opacity: 0.6 }}>{t('nodata')}</div>;
   const m = max ?? Math.max(1, ...items.map(i => i.value));
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>

@@ -4,11 +4,14 @@ import { categoryColor, shortCategory } from '../data/categories.js';
 import Sparkline from './charts/Sparkline.jsx';
 import Bars from './charts/Bars.jsx';
 import { Tiles, Block, ymLabel, titleCase } from './StationCrimePanel.jsx';
+import { useLang, useT } from '../i18n.js';
 
 // Summary for a clicked colonia or alcaldía. `area` = {kind, id, name}.
 export default function AreaPanel({ area, filters, onClose, onStationClick }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const lang = useLang();
+  const t = useT();
 
   useEffect(() => {
     let alive = true;
@@ -27,7 +30,7 @@ export default function AreaPanel({ area, filters, onClose, onStationClick }) {
         <div>
           <div style={{ fontWeight: 700, fontSize: 16 }}>{area.name}</div>
           <div style={{ fontSize: 11, opacity: 0.7 }}>
-            {area.kind === 'colonia' ? `Colonia · ${data?.area?.parent || area.alcaldia || ''}` : 'Alcaldía'}
+            {area.kind === 'colonia' ? `${t('p.colonia')} · ${data?.area?.parent || area.alcaldia || ''}` : t('p.alcaldia')}
             {data && <> · {data.window.from?.slice(0, 7)} → {data.window.to?.slice(0, 7)}</>}
           </div>
         </div>
@@ -37,22 +40,22 @@ export default function AreaPanel({ area, filters, onClose, onStationClick }) {
       {data && (
         <>
           <Tiles items={[
-            { label: 'Carpetas', value: data.n_cases.toLocaleString(), sub: `#${data.rank_by_count ?? '—'} de ${data.n_peers}` },
-            { label: 'Por km²', value: data.per_km2 != null ? data.per_km2.toLocaleString() : '—', sub: data.rank_by_density ? `#${data.rank_by_density} por densidad` : '' },
-            { label: 'Por mes', value: data.per_month != null ? data.per_month.toLocaleString() : '—', sub: `${data.window.months} meses` },
-            { label: 'Contra pasajeros', value: data.n_transport.toLocaleString(), sub: data.n_cases ? `${Math.round(data.n_transport / data.n_cases * 100)}%` : '' },
+            { label: t('p.cases'), value: data.n_cases.toLocaleString(), sub: t('p.rankOf', { r: data.rank_by_count ?? '—', n: data.n_peers }) },
+            { label: t('p.perKm2'), value: data.per_km2 != null ? data.per_km2.toLocaleString() : '—', sub: data.rank_by_density ? t('p.byDensity', { r: data.rank_by_density }) : '' },
+            { label: t('p.perMonth'), value: data.per_month != null ? data.per_month.toLocaleString() : '—', sub: t('p.months', { n: data.window.months }) },
+            { label: t('p.vsPassengers'), value: data.n_transport.toLocaleString(), sub: data.n_cases ? `${Math.round(data.n_transport / data.n_cases * 100)}%` : '' },
           ]} />
-          <Block title="Carpetas por mes">
+          <Block title={t('p.monthly')}>
             <Sparkline series={data.monthly.map(m => ({ label: ymLabel(m.ym), y: m.n }))} width={330} />
           </Block>
-          <Block title="Por categoría">
-            <Bars items={data.top_categories.map(c => ({ label: shortCategory(c.categoria), value: c.n, color: categoryColor(c.categoria) }))} />
+          <Block title={t('p.byCategory')}>
+            <Bars items={data.top_categories.map(c => ({ label: shortCategory(c.categoria, lang), value: c.n, color: categoryColor(c.categoria) }))} />
           </Block>
-          <Block title="Delitos más frecuentes">
+          <Block title={t('p.topDelitos')}>
             <Bars items={data.top_delitos.map(d => ({ label: titleCase(d.delito), value: d.n }))} color="#64748b" maxLabel={44} />
           </Block>
           {data.metro_stations?.length > 0 && (
-            <Block title="Estaciones del Metro en la zona">
+            <Block title={t('p.stationsIn')}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {data.metro_stations.map(s => (
                   <button key={s.station_key} onClick={() => onStationClick?.(s.station_key)} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 12 }}>

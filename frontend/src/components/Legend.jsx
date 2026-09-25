@@ -1,17 +1,19 @@
 import React from 'react';
 import { SEQ_RAMP } from '../data/categories.js';
+import { useT } from '../i18n.js';
 
 // Bottom-left legend for the active crime layers.
 export default function Legend({ layers, stationMetric, stationMax, coloniaMetric, heatRes }) {
+  const t = useT();
   const rows = [];
   if (layers.heat) rows.push(
-    <LegendRow key="heat" title={`Densidad de carpetas (hex ${heatRes} m)`}>
+    <LegendRow key="heat" title={t('lg.heat', { res: heatRes })}>
       <Gradient colors={['rgba(33,102,172,0)', '#4575b4', '#fee090', '#f46d43', '#a50026']} />
-      <Ends a="menos" b="más" />
+      <Ends a={t('lg.less')} b={t('lg.more')} />
     </LegendRow>
   );
   if (layers.stations) rows.push(
-    <LegendRow key="st" title={stationMetric === 'rate' ? 'Estaciones: carpetas por millón de entradas' : 'Estaciones: carpetas en el radio'}>
+    <LegendRow key="st" title={t(stationMetric === 'rate' ? 'lg.stRate' : 'lg.stCount')}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         {[0.15, 0.45, 0.8, 1].map((k, i) => (
           <span key={i} style={{
@@ -19,18 +21,18 @@ export default function Legend({ layers, stationMetric, stationMax, coloniaMetri
             background: SEQ_RAMP[Math.min(4, Math.round(k * 4))], border: '1px solid #fff',
           }} />
         ))}
-        <span style={{ fontSize: 10, opacity: 0.8, marginLeft: 4 }}>máx {stationMax != null ? fmt(stationMax) : '—'}</span>
+        <span style={{ fontSize: 10, opacity: 0.8, marginLeft: 4 }}>{t('lg.max')} {stationMax != null ? fmt(stationMax) : '—'}</span>
       </div>
     </LegendRow>
   );
   if (layers.colonias) rows.push(
-    <LegendRow key="col" title={coloniaMetric === 'per_km2' ? 'Colonias: carpetas por km²' : 'Colonias: carpetas'}>
+    <LegendRow key="col" title={t(coloniaMetric === 'per_km2' ? 'lg.colKm2' : 'lg.col')}>
       <Gradient colors={SEQ_RAMP} />
-      <Ends a="quintil 1" b="quintil 5" />
+      <Ends a={t('lg.q1')} b={t('lg.q5')} />
     </LegendRow>
   );
   if (layers.points) rows.push(
-    <LegendRow key="pts" title="Puntos: carpetas individuales (zoom ≥ 15), color por categoría" />
+    <LegendRow key="pts" title={t('lg.points')} />
   );
   if (!rows.length) return null;
   return (

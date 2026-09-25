@@ -207,6 +207,8 @@ export function useChatStream() {
         message,
         conversation_id: state.conversationId,
       };
+      // The English entry point (/en) pins the reply language server side.
+      if (options.lang) body.lang = options.lang;
       if (options.mapContext && typeof options.mapContext === 'object') {
         const ctx = Object.fromEntries(Object.entries(options.mapContext).filter(([, v]) => v != null && v !== ''));
         if (Object.keys(ctx).length) body.map_context = ctx;

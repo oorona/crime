@@ -57,7 +57,7 @@ export default function Map({
   agencies, onAgenciesLoaded,
   activeBasemap, visibleAgencies,
   crimeLayers, filters, viewsReady,
-  onStationClick, onAreaClick, onMapReady, onStationsLoaded,
+  onStationClick, onAreaClick, onMapReady, onStationsLoaded, lang = 'es',
 }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -65,7 +65,7 @@ export default function Map({
   const cacheRef = useRef(new window.Map());
   const reqRef = useRef({});            // kind → latest request id (drop stale responses)
   const latest = useRef({ filters, crimeLayers, viewsReady, heatRes: heatResForZoom(ZOOM) });
-  latest.current = { ...latest.current, filters, crimeLayers, viewsReady };
+  latest.current = { ...latest.current, filters, crimeLayers, viewsReady, lang };
   const pointsTimer = useRef(null);
   const stationsFC = useRef(null);
   const areaFC = useRef({ colonias: null, alcaldias: null });
@@ -258,7 +258,7 @@ export default function Map({
           if (layerId === 'stations-crime-circle') { onStationClick?.(p.station_key); return; }
           if (layerId === 'crime-points-layer') {
             new maplibregl.Popup({ maxWidth: '300px', className: 'route-popup' })
-              .setLngLat(e.lngLat).setHTML(_pointPopupHtml(p)).addTo(map);
+              .setLngLat(e.lngLat).setHTML(_pointPopupHtml(p, latest.current.lang)).addTo(map);
             return;
           }
           if (layerId === 'colonia-fill') { onAreaClick?.({ kind: 'colonia', id: p.id, name: p.colonia, alcaldia: p.alcaldia }); return; }
@@ -401,15 +401,21 @@ function _esc(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-function _pointPopupHtml(p) {
+const POPUP_TEXT = {
+  es: { noTime: '(hora no registrada)', metro: (s, m) => `Metro ${s} a ${m} m` },
+  en: { noTime: '(time not recorded)', metro: (s, m) => `Metro ${s}, ${m} m away` },
+};
+
+function _pointPopupHtml(p, lang = 'es') {
+  const tx = POPUP_TEXT[lang] || POPUP_TEXT.es;
   const color = CATEGORY_COLORS[p.categoria] || '#9ca3af';
   return `<div style="background:#0d1117;color:#e6edf3;padding:6px 4px;font-size:12px">
     <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
       <span style="width:10px;height:10px;border-radius:2px;background:${color};display:inline-block"></span>
       <strong>${_esc(p.delito)}</strong></div>
     <div style="opacity:.8">${_esc(p.categoria)}</div>
-    <div style="margin-top:4px">${_esc(p.fecha)}${p.hora_ok ? '' : ' <span style="opacity:.6">(hora no registrada)</span>'}</div>
+    <div style="margin-top:4px">${_esc(p.fecha)}${p.hora_ok ? '' : ` <span style="opacity:.6">${tx.noTime}</span>`}</div>
     <div style="opacity:.8">${_esc(p.colonia || '')}${p.alcaldia ? ', ' + _esc(p.alcaldia) : ''}</div>
-    ${p.station ? `<div style="opacity:.8">Metro ${_esc(p.station)} a ${_esc(p.station_m)} m</div>` : ''}
+    ${p.station ? `<div style="opacity:.8">${tx.metro(_esc(p.station), _esc(p.station_m))}</div>` : ''}
   </div>`;
 }

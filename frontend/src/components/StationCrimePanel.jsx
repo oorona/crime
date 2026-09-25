@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
-import { categoryColor, shortCategory, MODE_LABELS } from '../data/categories.js';
+import { categoryColor, shortCategory, modeLabel } from '../data/categories.js';
+import { useLang, useT } from '../i18n.js';
 import Sparkline from './charts/Sparkline.jsx';
 import Bars from './charts/Bars.jsx';
 import HourDowGrid from './charts/HourDowGrid.jsx';
@@ -13,6 +14,8 @@ const LINE_COLORS = {
 export default function StationCrimePanel({ stationKey, filters, onClose }) {
   const [report, setReport] = useState(null);
   const [error, setError] = useState(null);
+  const lang = useLang();
+  const tr = useT();
 
   useEffect(() => {
     let alive = true;
@@ -28,13 +31,13 @@ export default function StationCrimePanel({ stationKey, filters, onClose }) {
     <div className="panel" style={{ position: 'absolute', top: 12, right: 264, bottom: 12, width: 360, zIndex: 11, overflowY: 'auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>{report?.station?.station_name || (error ? 'Error' : 'Cargando…')}</div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{report?.station?.station_name || tr(error ? 'p.error' : 'p.loading')}</div>
           {report && (
             <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
               {report.station.lines.map(l => (
                 <span key={l} style={{ background: LINE_COLORS[l] || '#555', color: '#fff', fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 8 }}>{l}</span>
               ))}
-              <span style={{ fontSize: 11, opacity: 0.7, marginLeft: 4 }}>radio {report.radius_m} m · {report.window.from?.slice(0, 7)} → {report.window.to?.slice(0, 7)}</span>
+              <span style={{ fontSize: 11, opacity: 0.7, marginLeft: 4 }}>{tr('p.radius', { r: report.radius_m })} · {report.window.from?.slice(0, 7)} → {report.window.to?.slice(0, 7)}</span>
             </div>
           )}
         </div>
@@ -44,13 +47,13 @@ export default function StationCrimePanel({ stationKey, filters, onClose }) {
       {report && (
         <>
           <Tiles items={[
-            { label: 'Carpetas', value: t.n_cases.toLocaleString(), sub: `#${t.rank_by_count ?? '—'} de ${t.n_stations}` },
-            { label: 'Por millón de entradas', value: t.rate_per_million != null ? t.rate_per_million.toLocaleString() : '—', sub: t.rank_by_rate ? `#${t.rank_by_rate} por tasa` : 'sin afluencia' },
-            { label: 'Entradas diarias', value: t.avg_daily_entries != null ? t.avg_daily_entries.toLocaleString() : '—', sub: 'promedio' },
-            { label: 'Contra pasajeros', value: t.n_transport.toLocaleString(), sub: t.transport_share != null ? `${Math.round(t.transport_share * 100)}% del total` : '' },
+            { label: tr('p.cases'), value: t.n_cases.toLocaleString(), sub: tr('p.rankOf', { r: t.rank_by_count ?? '—', n: t.n_stations }) },
+            { label: tr('p.perMillion'), value: t.rate_per_million != null ? t.rate_per_million.toLocaleString() : '—', sub: t.rank_by_rate ? tr('p.byRate', { r: t.rank_by_rate }) : tr('p.noRidership') },
+            { label: tr('p.dailyEntries'), value: t.avg_daily_entries != null ? t.avg_daily_entries.toLocaleString() : '—', sub: tr('p.average') },
+            { label: tr('p.vsPassengers'), value: t.n_transport.toLocaleString(), sub: t.transport_share != null ? tr('p.ofTotal', { p: Math.round(t.transport_share * 100) }) : '' },
           ]} />
 
-          <Block title="Carpetas por mes (y entradas al Metro, azul)">
+          <Block title={tr('p.monthlyEntries')}>
             <Sparkline
               series={report.monthly.map(m => ({ label: ymLabel(m.ym), y: m.n }))}
               secondary={report.monthly.map(m => ({ label: ymLabel(m.ym), y: m.entries || 0 }))}
@@ -58,22 +61,22 @@ export default function StationCrimePanel({ stationKey, filters, onClose }) {
             />
           </Block>
 
-          <Block title="Por categoría">
-            <Bars items={report.by_category.slice(0, 8).map(c => ({ label: shortCategory(c.categoria), value: c.n, color: categoryColor(c.categoria) }))} />
+          <Block title={tr('p.byCategory')}>
+            <Bars items={report.by_category.slice(0, 8).map(c => ({ label: shortCategory(c.categoria, lang), value: c.n, color: categoryColor(c.categoria) }))} />
           </Block>
 
           {report.by_mode?.length > 0 && (
-            <Block title="Delitos contra pasajeros por modo">
-              <Bars items={report.by_mode.map(m => ({ label: MODE_LABELS[m.mode] || m.mode, value: m.n }))} color="#ff6600" />
+            <Block title={tr('p.byMode')}>
+              <Bars items={report.by_mode.map(m => ({ label: modeLabel(m.mode, lang), value: m.n }))} color="#ff6600" />
             </Block>
           )}
 
-          <Block title="Delitos más frecuentes">
+          <Block title={tr('p.topDelitos')}>
             <Bars items={report.top_delitos.slice(0, 8).map(d => ({ label: titleCase(d.delito), value: d.n }))} color="#64748b" maxLabel={44} />
           </Block>
 
           {report.profiles && (
-            <Block title={`Hora y día del hecho (${Math.round((report.profiles.hora_ok_share || 0) * 100)}% con hora válida)`}>
+            <Block title={tr('p.hourDow', { p: Math.round((report.profiles.hora_ok_share || 0) * 100) })}>
               <HourDowGrid grid={report.profiles.hour_dow} cell={11} />
             </Block>
           )}
