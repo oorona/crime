@@ -19,6 +19,12 @@ export default defineConfig({
         target: process.env.VITE_API_TARGET || 'http://backend:8000',
         changeOrigin: true,
       },
+      // The app polls /health for ingest progress; without this the SPA
+      // fallback would answer it with index.html.
+      '/health': {
+        target: process.env.VITE_API_TARGET || 'http://backend:8000',
+        changeOrigin: true,
+      },
     },
   },
   build: {

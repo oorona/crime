@@ -1,8 +1,11 @@
 # CDMX Crime GIS — backend + frontend + MCP server.
 #
 # Sibling of ../metro (same networks, same shared postgres, same Traefik).
-# Everything that must be unique on the shared networks is suffixed `crime`:
-# container names, Traefik router names, and Docker secret names.
+# Everything that must be unique on the shared networks carries `crime`:
+# SERVICE names (compose registers each service name as a DNS alias on every
+# network it joins, so a bare `backend` collides with every other project on
+# `intranet`), container names, image names, Traefik router names, and
+# Docker secret names.
 #
 # Networks (created once per host by /home/iktdts/apps/infra/networks/setup_networks.sh):
 #   internet  — public Traefik entrypoint. Frontends + Traefik-routed services join.
@@ -20,10 +23,11 @@
 
 services:
 
-  backend:
+  crime-backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: crime-backend
     container_name: ${BACKEND_CONTAINER_NAME:-cdmx-crime-backend}
     restart: unless-stopped
     user: "${APP_UID:-1000}:${APP_GID:-1000}"
@@ -72,10 +76,11 @@ services:
       retries: 3
       start_period: 60s
 
-  mcp_server:
+  crime-mcp:
     build:
       context: ./mcp_server
       dockerfile: Dockerfile
+    image: crime-mcp
     container_name: ${MCP_CONTAINER_NAME:-cdmx-crime-mcp}
     restart: unless-stopped
     user: "${APP_UID:-1000}:${APP_GID:-1000}"
@@ -101,7 +106,7 @@ services:
       - internet
       - intranet
     depends_on:
-      - backend
+      - crime-backend
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=internet"
@@ -111,10 +116,11 @@ services:
       - "traefik.http.routers.crimemcp.tls.certresolver=${CERT_RESOLVER:-cloudflare}"
       - "traefik.http.services.crimemcp.loadbalancer.server.port=6701"
 
-  frontend:
+  crime-frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    image: crime-frontend
     container_name: ${FRONTEND_CONTAINER_NAME:-cdmx-crime-frontend}
     restart: unless-stopped
     # Deliberately not read_only / non-root: `vite dev` writes its cache into
@@ -138,7 +144,7 @@ services:
       - internet
       - intranet
     depends_on:
-      - backend
+      - crime-backend
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=internet"

@@ -49,6 +49,16 @@ def parse_metro_line(linea_text: str) -> Optional[str]:
     return None
 
 
+# Ridership names that differ from the GTFS stop names (renamed stations).
+# Keys and values are normalized (see normalize()).
+STATION_ALIASES = {
+    "zocalo/tenochtitlan": "zocalo",
+    "zocalo tenochtitlan": "zocalo",
+    "ninos heroes": "ninos heroes y poder judicial cdmx",
+    "ninos heroes/poder judicial cdmx": "ninos heroes y poder judicial cdmx",
+}
+
+
 class MetroStopResolver:
     """Per-run cache for resolving (line, station_name) → stop_id.
 
@@ -93,10 +103,24 @@ class MetroStopResolver:
 
         line_code = parse_metro_line(line_text) or ""
         name_norm = normalize(station_name)
+        name_norm = STATION_ALIASES.get(name_norm, name_norm)
 
         stop_id = self._index.get((line_code, name_norm)) if self._index else None
         if not stop_id and self._index:
             stop_id = self._index.get(("", name_norm))
+        if not stop_id and self._index and "/" in name_norm:
+            # "zocalo/tenochtitlan" style renames: try the part before the slash.
+            head = name_norm.split("/")[0].strip()
+            stop_id = self._index.get((line_code, head)) or self._index.get(("", head))
+        if not stop_id:
+            # Renamed with a suffix ("ninos heroes" -> "ninos heroes y poder judicial cdmx").
+            row = await self.conn.fetchrow(
+                "SELECT stop_id FROM stops WHERE agency_id = 'METRO' AND stop_name_norm LIKE $1 || ' %' "
+                "ORDER BY (line_code = $2) DESC, stop_id LIMIT 1",
+                name_norm, line_code,
+            )
+            if row:
+                stop_id = row["stop_id"]
 
         if not stop_id:
             # Trigram fallback against the full Metro stop set.

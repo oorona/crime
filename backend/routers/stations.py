@@ -43,8 +43,8 @@ async def station_table(pool, f: CrimeFilter, radius: int) -> tuple[list[dict], 
                        COUNT(c.id) FILTER (WHERE c.is_transport_related)::INT AS nt
                 FROM metro_stations ms
                 LEFT JOIN crime_cases c
-                  ON c.geom IS NOT NULL
-                 AND ST_DWithin(ms.pts::geography, c.geom::geography, $1)
+                  ON c.geom_utm IS NOT NULL
+                 AND ST_DWithin(c.geom_utm, ms.pts_utm, $1)
                  {('AND ' + w) if w else ''}
                 GROUP BY 1
             )"""
@@ -185,8 +185,8 @@ async def station_report(
         w = f.where("c", params, CASES_COLS)
         base = f"""
             FROM metro_stations ms
-            JOIN crime_cases c ON c.geom IS NOT NULL
-             AND ST_DWithin(ms.pts::geography, c.geom::geography, $2)
+            JOIN crime_cases c ON c.geom_utm IS NOT NULL
+             AND ST_DWithin(c.geom_utm, ms.pts_utm, $2)
             WHERE ms.station_key = $1 {('AND ' + w) if w else ''}"""
         monthly = await pool.fetch(f"SELECT c.ym, COUNT(*)::INT AS n {base} GROUP BY 1 ORDER BY 1", *params)
         bycat = await pool.fetch(f"SELECT c.categoria_delito AS categoria, COUNT(*)::INT AS n {base} GROUP BY 1 ORDER BY 2 DESC", *params)
@@ -210,8 +210,8 @@ async def station_report(
     lw = f.where("c", lp, CASES_COLS)
     live_base = f"""
         FROM metro_stations ms
-        JOIN crime_cases c ON c.geom IS NOT NULL
-         AND ST_DWithin(ms.pts::geography, c.geom::geography, $2)
+        JOIN crime_cases c ON c.geom_utm IS NOT NULL
+         AND ST_DWithin(c.geom_utm, ms.pts_utm, $2)
         WHERE ms.station_key = $1 {('AND ' + lw) if lw else ''}"""
     top_delitos = await pool.fetch(f"SELECT c.delito, COUNT(*)::INT AS n {live_base} GROUP BY 1 ORDER BY 2 DESC LIMIT 10", *lp)
     profiles = None

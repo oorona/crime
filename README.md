@@ -22,7 +22,7 @@ spatially and lets a person, or a language model, ask the question directly.
 
 ## What you get
 
-- **Heat map** of FGJ *carpetas de investigación* (2019 to Nov 2024) as
+- **Heat map** of FGJ *carpetas de investigación* (2019 to Jan 2025) as
   hexagonal density at 250, 500 or 1000 m, over Metro, Metrobús, Tren Ligero,
   Cablebús, Trolebús and RTP lines and stations.
 - **163 physical Metro stations** as graduated circles: cases within 300 m or
@@ -64,7 +64,7 @@ spatially and lets a person, or a language model, ask the question directly.
 ## Data
 
 All from the CDMX open-data portal (CC-BY-4.0): FGJ carpetas de
-investigación (case level, Jan 2016 to Nov 2024, rows before 2019 dropped)
+investigación (case level, Jan 2016 to Jan 2025, rows before 2019 dropped)
 and víctimas (victim level, 2019 to mid 2024), STC Metro daily ridership per
 station (2010 to 2026), the Oct 2022 GTFS static feed, and the colonias and
 alcaldías boundaries. The 1 GB of inputs stay out of the repo; the portal

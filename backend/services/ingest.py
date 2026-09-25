@@ -5,7 +5,7 @@
 Runs as a background task from the FastAPI lifespan (see main.py) so the API
 answers immediately, and as a CLI for re-runs:
 
-    docker compose exec backend python -m services.ingest [--only crime_cases,crime_victims] [--force]
+    docker compose exec crime-backend python -m services.ingest [--only crime_cases,crime_victims] [--force]
 
 A Postgres advisory lock makes the run single-flight across processes.
 `state` (a plain dict on app.state) is what /health reports.
@@ -49,9 +49,18 @@ async def _refresh_mv(conn, name: str) -> None:
 
 
 async def refresh_views(conn, names: Iterable[str] = MATERIALIZED_VIEWS) -> None:
-    for name in names:
-        await _refresh_mv(conn, name)
-    await conn.execute("ANALYZE")
+    # The shared postgres runs on an 8 GB host next to other apps: keep each
+    # refresh single-process and index-driven rather than a parallel scan
+    # (a parallel worker was OOM-killed refreshing mv_station_crime once).
+    await conn.execute("SET max_parallel_workers_per_gather = 0")
+    await conn.execute("SET work_mem = '64MB'")
+    try:
+        for name in names:
+            await _refresh_mv(conn, name)
+        await conn.execute("ANALYZE")
+    finally:
+        await conn.execute("RESET max_parallel_workers_per_gather")
+        await conn.execute("RESET work_mem")
 
 
 async def ensure_hex_cells(conn) -> None:
@@ -90,7 +99,9 @@ async def run_all(pool, state: dict, only: set[str] | None = None, force: bool =
                     logger.exception("ingest step %s failed", name)
                     raise
                 st.update(status="done", seconds=round(time.time() - st["started_at"], 1))
-                if result is not None:
+                # None / {} / 0 mean "nothing loaded" (hash unchanged or file absent);
+                # only a real load should trigger the view refresh.
+                if result not in (None, {}, 0):
                     st["result"] = result if isinstance(result, (int, dict)) else str(result)
                     changed_any = True
                 return result

@@ -53,7 +53,7 @@ is tracked.
 
 | Dataset | File | Coverage |
 |---|---|---|
-| FGJ carpetas de investigación | `data/carpetasFGJ_acumulado_2025_01.csv` (560 MB) | Jan 2016 to Nov 2024; rows before 2019 dropped at ingest |
+| FGJ carpetas de investigación | `data/carpetasFGJ_acumulado_2025_01.csv` (560 MB) | Jan 2016 to Jan 2025; rows before 2019 dropped at ingest |
 | FGJ víctimas | `data/victimasFGJ_acumulado_2024_09.csv` (373 MB) | Jan 2019 to about May 2024 |
 | STC Metro afluencia diaria | `data/afluencia_metro_simple.csv` (60 MB) | 2010 to Jul 2026; 2019 on kept |
 | GTFS static | `gtfs/*.txt` | Oct 2022 feed, identical to metro's |
@@ -95,7 +95,7 @@ SELECT count(*) FROM metro_stations ms JOIN crime_cases c ON ST_DWithin(ms.pts::
 ## Tests
 
 ```sh
-docker compose exec backend python -m pytest -q -p no:cacheprovider tests
+docker compose exec crime-backend python -m pytest -q -p no:cacheprovider tests
 ```
 
 The root filesystem is read-only, hence no cache. 50 tests cover the parsing
@@ -105,9 +105,9 @@ helpers and the filter layer.
 
 ```sh
 docker logs -f cdmx-crime-backend
-docker compose up -d --build backend                    # after editing backend code
-docker compose exec backend python -m services.ingest --only crime_cases --force   # reload one source
-docker compose exec backend python -m services.ingest --force                      # reload everything
+docker compose up -d --build crime-backend                    # after editing backend code
+docker compose exec crime-backend python -m services.ingest --only crime_cases --force   # reload one source
+docker compose exec crime-backend python -m services.ingest --force                      # reload everything
 docker exec postgres psql -U postgres -d cdmx_crime -c "TRUNCATE crime_user.data_ingest_runs;"  # forget hashes
 ```
 

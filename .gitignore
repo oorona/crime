@@ -26,11 +26,11 @@ secrets.test/
 # --- /deploy convention ---
 
 # --- crime: large open-data inputs (re-fetch with scripts/fetch_data.sh) ---
-data/*
-!data/.gitkeep
-boundaries/*
-!boundaries/.gitkeep
-gtfs/*.zip
+/data/*
+!/data/.gitkeep
+/boundaries/*
+!/boundaries/.gitkeep
+/gtfs/*.zip
 
 # local dev port mapping
 docker-compose.override.yml

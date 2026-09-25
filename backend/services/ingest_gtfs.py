@@ -194,13 +194,14 @@ async def run(conn, force: bool = False) -> int | None:
     # ── metro_stations: one row per physical station (name cluster) ────────
     await conn.execute("TRUNCATE metro_stations")
     await conn.execute("""
-        INSERT INTO metro_stations (station_key, station_name, stop_ids, lines, geom, pts)
+        INSERT INTO metro_stations (station_key, station_name, stop_ids, lines, geom, pts, pts_utm)
         SELECT stop_name_norm,
                MIN(stop_name),
                array_agg(stop_id ORDER BY stop_id),
                array_agg(DISTINCT line_code ORDER BY line_code),
                ST_Centroid(ST_Collect(geom)),
-               ST_Multi(ST_Collect(geom))
+               ST_Multi(ST_Collect(geom)),
+               ST_Transform(ST_Multi(ST_Collect(geom)), 32614)
         FROM stops
         WHERE agency_id = 'METRO' AND geom IS NOT NULL AND stop_name_norm <> ''
         GROUP BY stop_name_norm
