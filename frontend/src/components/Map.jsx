@@ -41,6 +41,15 @@ export function heatResForZoom(z) {
   return z < 12 ? 1000 : z < 14 ? 500 : 250;
 }
 
+// Heat points are hex centroids spaced sqrt(3)*res metres apart. A fixed pixel
+// radius leaves gaps between them (isolated dots), so scale the radius with the
+// map: ~1.5x the on-screen centroid spacing, which blends neighbours into a
+// continuous surface at every zoom. 73823 m/px is zoom 0 at CDMX's latitude.
+function heatRadius(res) {
+  const k = (1.5 * Math.sqrt(3) * res) / 73823;
+  return ['interpolate', ['exponential', 2], ['zoom'], 0, k, 20, k * 2 ** 20];
+}
+
 const categoryMatch = ['match', ['get', 'categoria'],
   ...Object.entries(CATEGORY_COLORS).flat(), '#9ca3af'];
 
@@ -80,6 +89,7 @@ export default function Map({
       const fc = await cachedFetch(`heat|${res}|${filterQuery(f)}`, () => api.crimeHeat(f, { res, geom: 'centroid' }));
       if (id !== reqRef.current.heat) return;
       map.getSource('crime-heat').setData(fc);
+      map.setPaintProperty('crime-heat-layer', 'heatmap-radius', heatRadius(res));
     } catch (e) { console.warn('heat load failed', e); }
   };
 
@@ -184,9 +194,10 @@ export default function Map({
       // ── heat ──
       map.addLayer({ id: 'crime-heat-layer', type: 'heatmap', source: 'crime-heat', layout: { visibility: 'none' },
         paint: {
-          'heatmap-weight': ['^', ['coalesce', ['get', 'n_norm'], 0], 0.5],
-          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 10, 0.7, 13, 1.4, 16, 2.2],
-          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 10, 14, 12, 22, 14, 34, 16, 52],
+          'heatmap-weight': ['^', ['coalesce', ['get', 'n_norm'], 0], 0.75],
+          // radius tracks cell spacing, so overlap (and density) is zoom-invariant
+          'heatmap-intensity': 1.2,
+          'heatmap-radius': heatRadius(heatResForZoom(ZOOM)),
           'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'],
             0, 'rgba(33,102,172,0)', 0.15, '#4575b4', 0.4, '#fee090', 0.65, '#f46d43', 1, '#a50026'],
           'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.85, 17, 0.4],
