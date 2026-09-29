@@ -1,6 +1,10 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useChatStream } from '../hooks/useChatStream.js';
 import { useLang, useT } from '../i18n.js';
+import Markdown from './Markdown.jsx';
+
+const SIZE_KEY = 'crime_minichat_size';
+const readSize = () => { try { return localStorage.getItem(SIZE_KEY) === 'large' ? 'large' : 'normal'; } catch { return 'normal'; } };
 
 // Minimal chat affordance pinned to the top-right of the map (under the layer
 // panel). Independent useChatStream instance. When a turn finishes, the tool
@@ -12,6 +16,14 @@ export default function MiniChat({ mapApi, isMapReady, mapContext, onApplyFilter
   const t = useT();
   const [input, setInput] = useState('');
   const [collapsed, setCollapsed] = useState(false);
+  // 'normal' docks bottom-right; 'large' is a tall reading pane for reports.
+  const [size, setSize] = useState(readSize);
+  const toggleSize = () => setSize(s => {
+    const next = s === 'large' ? 'normal' : 'large';
+    try { localStorage.setItem(SIZE_KEY, next); } catch { /* private mode */ }
+    return next;
+  });
+  const large = size === 'large' && !collapsed;
   const firedForTurnRef = useRef(new Set());
   const scrollEndRef = useRef(null);
 
@@ -64,24 +76,38 @@ export default function MiniChat({ mapApi, isMapReady, mapContext, onApplyFilter
 
   return (
     <div className="panel" style={{
-      position: 'absolute', bottom: 28, right: 12, width: 360, zIndex: 11,
+      position: 'absolute', bottom: 28, right: 12, zIndex: large ? 12 : 11,
+      width: large ? 'min(780px, calc(100% - 340px))' : 'min(460px, calc(100% - 24px))',
+      top: large ? 60 : undefined,
       display: 'flex', flexDirection: 'column', padding: 0,
       maxHeight: collapsed ? undefined : 'calc(100% - 60px)',
+      boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
     }}>
-      <button type="button" onClick={() => setCollapsed(c => !c)} style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-        padding: '8px 12px', background: 'transparent', color: 'inherit', border: 'none',
-        borderBottom: collapsed ? 'none' : '1px solid #30363d', cursor: 'pointer',
-        fontSize: 13, fontWeight: 600, textAlign: 'left',
-      }}>
-        <span>{t('mc.title')}</span>
-        <span style={{ opacity: 0.7, fontSize: 11 }}>{collapsed ? '▸' : '▾'}</span>
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', borderBottom: collapsed ? 'none' : '1px solid #30363d' }}>
+        <button type="button" onClick={() => setCollapsed(c => !c)} style={{
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '9px 12px', background: 'transparent', color: 'inherit', border: 'none',
+          cursor: 'pointer', fontSize: 13, fontWeight: 600, textAlign: 'left',
+        }}>
+          <span>{t('mc.title')}</span>
+          <span style={{ opacity: 0.7, fontSize: 11 }}>{collapsed ? '▸' : '▾'}</span>
+        </button>
+        {!collapsed && (
+          <button type="button" onClick={toggleSize} title={t(large ? 'mc.shrink' : 'mc.expand')} aria-label={t(large ? 'mc.shrink' : 'mc.expand')}
+            style={{ padding: '6px 12px', background: 'transparent', border: 'none', borderLeft: '1px solid #30363d', borderRadius: 0, color: '#94a3b8', fontSize: 14 }}>
+            {large ? '⤡' : '⤢'}
+          </button>
+        )}
+      </div>
       {!collapsed && chatEnabled === false && (
         <div style={{ padding: '6px 12px', fontSize: 11, color: '#fbbf24' }}>{t('mc.disabled')}</div>
       )}
       {!collapsed && showMessages && (
-        <div style={{ padding: 12, overflowY: 'auto', maxHeight: 300, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0, borderBottom: '1px solid #30363d' }}>
+        <div style={{
+          padding: '12px 14px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14,
+          minHeight: 0, borderBottom: '1px solid #30363d',
+          ...(large ? { flex: 1 } : { maxHeight: 'min(60vh, 560px)' }),
+        }}>
           {state.turns.map((turn, i) => (
             <Exchange key={i} turn={turn} streaming={i === state.turns.length - 1 && state.status === 'streaming'} />
           ))}
@@ -106,11 +132,11 @@ export default function MiniChat({ mapApi, isMapReady, mapContext, onApplyFilter
         </div>
       )}
       {!collapsed && (
-        <form onSubmit={onSubmit} style={{ display: 'flex', gap: 6, padding: 10, background: '#0d1117' }}>
+        <form onSubmit={onSubmit} style={{ display: 'flex', gap: 6, padding: 10, background: '#0d1117', borderRadius: '0 0 6px 6px' }}>
           <input type="text" value={input} onChange={(e) => setInput(e.target.value)}
             placeholder={t('mc.placeholder')}
             disabled={state.status === 'streaming' || chatEnabled === false}
-            style={{ flex: 1, padding: '6px 8px', fontSize: 12, background: '#161b22', color: '#e6edf3', border: '1px solid #30363d', borderRadius: 4, outline: 'none' }} />
+            style={{ flex: 1, padding: '8px 10px', fontSize: 13, background: '#161b22', color: '#e6edf3', border: '1px solid #30363d', borderRadius: 4, outline: 'none' }} />
           {state.turns.length > 0 && (
             <button type="button" onClick={onNew} title={t('mc.new')} style={{ padding: '6px 8px', fontSize: 12, background: 'transparent', color: '#94a3b8', border: '1px solid #30363d', borderRadius: 4 }}>↻</button>
           )}
@@ -140,12 +166,11 @@ function extractFilters(turn) {
 
 function Exchange({ turn, streaming }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div style={{ alignSelf: 'flex-end', maxWidth: '85%', padding: '6px 10px', borderRadius: 8, background: '#1f6feb', color: '#fff', whiteSpace: 'pre-wrap', fontSize: 12 }}>{turn.user}</div>
-      {(turn.assistantText || streaming) && (
-        <div style={{ alignSelf: 'flex-start', maxWidth: '92%', padding: '6px 10px', borderRadius: 8, background: '#161b22', color: '#e6edf3', border: '1px solid #30363d', whiteSpace: 'pre-wrap', fontSize: 12 }}>
-          {turn.assistantText || <span style={{ opacity: 0.6 }}>…</span>}
-          {streaming && turn.assistantText && <span style={{ opacity: 0.4 }}> ▍</span>}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ alignSelf: 'flex-end', maxWidth: '85%', padding: '7px 11px', borderRadius: 8, background: '#1f6feb', color: '#fff', whiteSpace: 'pre-wrap', fontSize: 13 }}>{turn.user}</div>
+      {turn.assistantText && (
+        <div style={{ padding: '10px 14px', borderRadius: 8, background: '#0d1117', border: '1px solid #30363d' }}>
+          <Markdown text={turn.assistantText} streaming={streaming} className="minichat-report" />
         </div>
       )}
     </div>

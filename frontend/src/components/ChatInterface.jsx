@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useChatStream, clearTraceCache } from '../hooks/useChatStream.js';
 import TracePanel from './TracePanel.jsx';
 import VerticalSplitter from './Splitter.jsx';
+import Markdown from './Markdown.jsx';
 import { useLang, useT, basePath } from '../i18n.js';
 
 const TRACE_WIDTH_KEY = 'crime_chat_trace_width';
@@ -190,6 +191,8 @@ export default function ChatInterface() {
         )}
         <div style={{
           flex: 1, overflowY: 'auto', padding: 16,
+          // leave room for the floating "Show reasoning" button
+          paddingTop: state.turns.length > 0 && !traceOpen ? 52 : 16,
           display: 'flex', flexDirection: 'column', gap: 12,
         }}>
           {state.turns.length === 0 && (
@@ -385,15 +388,13 @@ function AssistantBubble({ text, streaming, toolCalls, onShowTrace, iterCount })
   if (!text && !streaming) return null;
   return (
     <div style={{
-      alignSelf: 'flex-start', maxWidth: '75%',
-      padding: '10px 14px', borderRadius: 8,
+      alignSelf: 'flex-start', width: 'min(820px, 100%)',
+      padding: '14px 18px', borderRadius: 8,
       background: '#161b22', color: '#e6edf3',
       border: '1px solid #30363d',
-      whiteSpace: 'pre-wrap', fontSize: 13,
     }}>
-      {text || (streaming ? <span style={{ opacity: 0.6 }}>…</span> : null)}
-      {streaming && text && <span style={{ opacity: 0.4 }}> ▍</span>}
-      <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      {text ? <Markdown text={text} streaming={streaming} /> : (streaming ? <span style={{ opacity: 0.6 }}>…</span> : null)}
+      <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {showOnMapHref && (
           <Link to={showOnMapHref} style={{
             display: 'inline-block', padding: '4px 10px',

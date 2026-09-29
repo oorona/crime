@@ -67,6 +67,7 @@ const STRINGS = {
     'mc.disabled': 'Chat deshabilitado: falta la clave de Gemini o del MCP en secrets/.',
     'mc.otherFilters': 'El asistente usó otros filtros', 'mc.apply': 'Aplicar al mapa',
     'mc.placeholder': '¿Qué estación tiene más robos por usuario?', 'mc.new': 'Nueva pregunta', 'mc.send': 'Enviar',
+    'mc.expand': 'Ampliar para leer el reporte', 'mc.shrink': 'Reducir',
 
     'w.thinking': 'Pensando…', 'w.calling': 'Llamando {tool}…',
     'tool.data_coverage': 'Consultando cobertura…', 'tool.list_categories': 'Listando categorías…',
@@ -153,6 +154,7 @@ const STRINGS = {
     'mc.disabled': 'Chat disabled: the Gemini or MCP key is missing in secrets/.',
     'mc.otherFilters': 'The assistant used different filters', 'mc.apply': 'Apply to map',
     'mc.placeholder': 'Which station has the most robberies per rider?', 'mc.new': 'New question', 'mc.send': 'Send',
+    'mc.expand': 'Expand to read the report', 'mc.shrink': 'Shrink',
 
     'w.thinking': 'Thinking…', 'w.calling': 'Calling {tool}…',
     'tool.data_coverage': 'Checking coverage…', 'tool.list_categories': 'Listing categories…',
